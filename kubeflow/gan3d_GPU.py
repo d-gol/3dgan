@@ -859,6 +859,7 @@ for epoch in range(nb_epochs):
         if fake_batch_loss[3] == 100.0 and index >10:
             print("Empty image with Ecal loss equal to 100.0 for {} batch".format(index))
             generator.save_weights(WeightsDir + '/{0}eee.hdf5'.format(g_weights), overwrite=True)
+            generator.save(WeightsDir + '/{0}eee.hdf5'.format(g_weights), overwrite=True)
             discriminator.save_weights(WeightsDir + '/{0}eee.hdf5'.format(d_weights), overwrite=True)
             print ('real_batch_loss', real_batch_loss)
             print ('fake_batch_loss', fake_batch_loss)
@@ -980,12 +981,15 @@ for epoch in range(nb_epochs):
     # save weights every epoch
     generator_weights_path = WeightsDir + '/{0}{1:03d}.hdf5'.format(g_weights, epoch)
     discriminator_weights_path = WeightsDir + '/{0}{1:03d}.hdf5'.format(g_weights, epoch)
+    model_save_path = WeightsDir + 'generator_model'
 
     print('generator_weights_path', generator_weights_path)
     print('discriminator_weights_path', discriminator_weights_path)
+    print('model_save_path', model_save_path)
 
     generator.save_weights(generator_weights_path, overwrite=True)
     discriminator.save_weights(discriminator_weights_path, overwrite=True)
+    generator.save(model_save_path)
 
     epoch_time = time.time()-test_start
     print("The Testing for {} epoch took {} seconds. Weights are saved in {}".format(epoch, epoch_time, WeightsDir))
@@ -1020,6 +1024,13 @@ for epoch in range(nb_epochs):
         client.upload_file(filename, 'dejan', filename)
         client.upload_file(generator_weights_path, 'dejan', filename[:-4] + '_params_generator.hdf5')
         client.upload_file(discriminator_weights_path, 'dejan', filename[:-4] + '_params_discriminator.hdf5')
+
+        for root, dirs, files in os.walk(model_save_path):
+            for file in files:
+                name = os.path.join(root, file)[len(model_save_path) + 1:]
+                bucket_name = filename[:-4] + '_saved_model/1/' + name
+                client.upload_file(os.path.join(root, file), 'dejan', bucket_name)
+
 
     if do_profiling:
         print('os.path.basename(outpath + profiling_dir)')
