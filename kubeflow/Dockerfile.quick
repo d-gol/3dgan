@@ -1,0 +1,17 @@
+ARG IMAGE_TYPE="gpu"
+FROM docker.io/dejangolubovic/gan3d
+
+COPY requirements/requirements.txt /tmp/requirements.txt
+
+RUN pip3 install -r /tmp/requirements.txt && \
+pip uninstall -y enum34 && pip install --no-binary=:all: --force-reinstall numpy
+
+COPY gan3d_GPU.py /opt/gan3d_GPU.py
+COPY gan3d_TPU.py /opt/gan3d_TPU.py
+
+RUN echo "jovyan ALL=(ALL:ALL) NOPASSWD:ALL" > /etc/sudoers.d/jovyan && \
+mkdir /model_outputs && \
+chmod -R 777 /model_outputs && \
+chmod +x /opt/gan3d_GPU.py && \
+chmod +x /opt/gan3d_TPU.py && \
+mkdir /home/jovyan/.aws

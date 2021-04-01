@@ -1,0 +1,95 @@
+apiVersion: "kubeflow.org/v1alpha3"
+kind: Experiment
+metadata:
+  namespace: kubeflow
+  name: gan3d-tpu-8-v15
+spec:
+  parallelTrialCount: 1
+  maxTrialCount: 1
+  maxFailedTrialCount: 1
+  objective:
+    type: minimize
+    goal: 0
+    objectiveMetricName: discriminator-train-binary-loss
+    additionalMetricNames:
+        - generator-train-binary-loss
+        - discriminator-train-loss
+        - generator-train-loss
+        - discriminator-test-loss
+        - generator-test-loss
+        - train-epoch-time
+        - test-epoch-time
+  algorithm:
+    algorithmName: random
+  metricsCollectorSpec:
+    source:
+      filter:
+        metricsFormat:
+        - ([\w|-]+)\s*=\s*((-?\d+)(\.\d+)?)
+      fileSystemPath:
+        path: "/model_outputs/metrics_custom.txt"
+        kind: File
+    collector:
+        kind: File
+  parameters:
+    - name: --nb_epochs
+      parameterType: int
+      feasibleSpace:
+        min: 5
+        max: 5
+    - name: --is_full_training
+      parameterType: int
+      feasibleSpace:
+        min: 1
+        max: 1
+    - name: --use_eos
+      parameterType: int
+      feasibleSpace:
+        min: 0
+        max: 0
+    - name: --batch_size
+      parameterType: int
+      feasibleSpace:
+        min: 128
+        max: 128
+    - name: --use_autotune
+      parameterType: int
+      feasibleSpace:
+        min: 1
+        max: 1
+  trialTemplate:
+    goTemplate:
+      rawTemplate: |-
+        apiVersion: "kubeflow.org/v1"
+        kind: TFJob
+        metadata:
+          name: {{.Trial}}
+          namespace: {{.NameSpace}}
+        spec:
+         tfReplicaSpecs:
+          Worker:
+            replicas: 1
+            restartPolicy: OnFailure
+            template:
+              metadata:
+                annotations:
+                  tf-version.cloud-tpus.google.com: "2.3"
+              spec:
+                containers:
+                  - name: tensorflow
+                    ports:
+                    - containerPort: 2222
+                      name: tfjob-port
+                    resources:
+                      limits:
+                        cloud-tpus.google.com/preemptible-v2: 8
+                    image: registry.hub.docker.com/dejangolubovic/gan3d:batch
+                    imagePullPolicy: Always
+                    command:
+                      - "python3"
+                      - "/opt/gan3d_TPU.py"
+                      {{- with .HyperParameters}}
+                      {{- range .}}
+                      - "{{.Name}}={{.Value}}"
+                      {{- end}}
+                      {{- end}}
